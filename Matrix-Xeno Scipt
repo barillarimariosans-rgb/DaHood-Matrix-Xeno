@@ -1,0 +1,231 @@
+-- ==========================================================
+-- CATEGORIZED DA HOOD UNIVERSE HUB (BYPASS XENO & MATRIX)
+-- Codice tuo v6 - Ottimizzato, corretto e inserito in PlayerGui
+-- ==========================================================
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Configurazioni modificabili dal giocatore
+local Config = {
+    Tasti = {
+        Velocita = Enum.KeyCode.Q,
+        Aimlock = Enum.KeyCode.E,
+        Volo = Enum.KeyCode.V,
+        NoClip = Enum.KeyCode.N,
+        Teleport = Enum.KeyCode.X
+    },
+    ValoreVelocita = 70,
+    ValoreVolo = 50,
+    MiraTarget = "Head"
+}
+
+local velocitaAttiva, aimlockAttivo, voloAttivo, noclipAttivo = false, false, false, false
+local targetNemico, forzaVolo = nil, nil
+
+-- FIX FONDAMENTALE: Iniezione in PlayerGui anziché CoreGui per evitare i blocchi degli executor
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+if PlayerGui:FindFirstChild("CategorizedPurpleHub") then 
+    PlayerGui.CategorizedPurpleHub:Destroy() 
+end
+
+-- 1. CREAZIONE FINESTRA PRINCIPALE (VIOLA NEON)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local FrameStroke = Instance.new("UIStroke")
+local Title = Instance.new("TextLabel")
+local ScrollingFrame = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
+
+ScreenGui.Name = "CategorizedPurpleHub"
+ScreenGui.Parent = PlayerGui -- Assegnato alla cartella locale sicura
+ScreenGui.ResetOnSpawn = false
+
+MainFrame.Size = UDim2.new(0, 250, 0, 430)
+MainFrame.Position = UDim2.new(0.05, 0, 0.15, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 25)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+FrameStroke.Color = Color3.fromRGB(160, 32, 240)
+FrameStroke.Thickness = 2
+FrameStroke.Parent = MainFrame
+
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Title.Text = "🔮 Da Hood Categorized Hub v6 🔮"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 13
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+ScrollingFrame.Parent = MainFrame
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.Position = UDim2.new(0, 0, 0, 35)
+ScrollingFrame.Size = UDim2.new(1, 0, 1, -35)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 520)
+ScrollingFrame.ScrollBarThickness = 3
+
+UIListLayout.Parent = ScrollingFrame
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- 2. FUNZIONI HELPER PER CATEGORIE E PULSANTI
+local function CreaCategoria(nomeCategoria)
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0, 230, 0, 20)
+    Label.BackgroundTransparency = 1
+    Label.Text = "─── " .. nomeCategoria:upper() .. " ───"
+    Label.TextColor3 = Color3.fromRGB(180, 120, 255)
+    Label.TextSize = 11
+    Label.Font = Enum.Font.SourceSansBold
+    Label.Parent = ScrollingFrame
+end
+
+local function CreaPulsante(testo, callback)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 220, 0, 30)
+    Button.BackgroundColor3 = Color3.fromRGB(45, 20, 70)
+    Button.Text = testo
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.Font = Enum.Font.SourceSansBold
+    Button.TextSize = 12
+    Button.Parent = ScrollingFrame
+    
+    local UICorner = Instance.new("UICorner", Button)
+    UICorner.CornerRadius = UDim.new(0, 5)
+    local Stroke = Instance.new("UIStroke", Button)
+    Stroke.Color = Color3.fromRGB(140, 35, 210)
+    
+    Button.MouseButton1Click:Connect(function() callback(Button) end)
+    return Button
+end
+
+-- ==========================================================
+-- COSTRUZIONE DELLE CATEGORIE VERTICALI
+-- ==========================================================
+
+CreaCategoria("Combat")
+local regTgt = CreaPulsante("Target Aimlock: " .. Config.MiraTarget:upper(), function(b)
+    Config.MiraTarget = Config.MiraTarget == "Head" and "Torso" or "Head"
+    b.Text = "Target Aimlock: " .. Config.MiraTarget:upper()
+end)
+CreaPulsante("Attiva Aimlock con tasto: [" .. Config.Tasti.Aimlock.Name .. "]", function() end)
+
+CreaCategoria("Movement")
+local regVel = CreaPulsante("Regola Velocità: " .. Config.ValoreVelocita, function(b)
+    Config.ValoreVelocita = Config.ValoreVelocita >= 150 and 40 or Config.ValoreVelocita + 20
+    b.Text = "Regola Velocità: " .. Config.ValoreVelocita
+end)
+local regVol = CreaPulsante("Regola Volo: " .. Config.ValoreVolo, function(b)
+    Config.ValoreVolo = Config.ValoreVolo >= 120 and 30 or Config.ValoreVolo + 20
+    b.Text = "Regola Volo: " .. Config.ValoreVolo
+end)
+CreaPulsante("Tasti: Corsa ["..Config.Tasti.Velocita.Name.."] | Volo ["..Config.Tasti.Volo.Name.."]", function() end)
+CreaPulsante("Tasto NoClip (Muri): [" .. Config.Tasti.NoClip.Name .. "]", function() end)
+
+CreaCategoria("Teleports")
+CreaPulsante("Teletrasporto automatico: [" .. Config.Tasti.Teleport.Name .. "]", function() end)
+CreaPulsante("Cerca Shop nella variante", function()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and (v.Name:lower():match("ammo") or v.Name:lower():match("gunshop")) then
+                char.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                break
+            end
+        end
+    end
+end)
+
+CreaCategoria("Settings")
+CreaPulsante("Nascondi questo Menu: [P]", function() end)
+
+-- ==========================================================
+-- LOGICA DI FUNZIONAMENTO INTELLIGENTE BYPASS
+-- ==========================================================
+
+local function TrovaNemicoVicino()
+    local piuVicino, distanzaMinima = nil, math.huge
+    local localChar = LocalPlayer.Character
+    if not localChar or not localChar:FindFirstChild("HumanoidRootPart") then return nil end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local dist = (localChar.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+            if dist < distanzaMinima then piuVicino, distanzaMinima = p, dist end
+        end
+    end
+    return piuVicino
+end
+
+UserInputService.InputBegan:Connect(function(input, inChat)
+    if inChat then return end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+    if input.KeyCode == Enum.KeyCode.P then MainFrame.Visible = not MainFrame.Visible return end
+
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+    if input.KeyCode == Config.Tasti.Velocita then
+        velocitaAttiva = not velocitaAttiva
+    end
+    if input.KeyCode == Config.Tasti.Aimlock then
+        aimlockAttivo = not aimlockAttivo; targetNemico = aimlockAttivo and TrovaNemicoVicino() or nil
+    end
+    if input.KeyCode == Config.Tasti.Volo then
+        voloAttivo = not voloAttivo
+        if voloAttivo then
+            forzaVolo = Instance.new("BodyVelocity", char.HumanoidRootPart); forzaVolo.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        else
+            if forzaVolo then forzaVolo:Destroy() end
+        end
+    end
+    if input.KeyCode == Config.Tasti.NoClip then noclipAttivo = not noclipAttivo end
+    if input.KeyCode == Config.Tasti.Teleport then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and (v.Name:lower():match("ammo") or v.Name:lower():match("gunshop")) then
+                char.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0) break
+            end
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
+
+    -- Bypass Corsa (Spinta vettoriale fluida per non farsi laggare o cacciare dall'anti-cheat)
+    if velocitaAttiva and char.Humanoid.MoveDirection.Magnitude > 0 then
+        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (char.Humanoid.MoveDirection * (Config.ValoreVelocita / 100))
+    end
+
+    -- Chiusura della riga troncata e logica Camlock corretta
+    if aimlockAttivo and targetNemico and targetNemico.Character and targetNemico.Character:FindFirstChild(Config.MiraTarget) then
+        Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetNemico.Character[Config.MiraTarget].Position)
+    end
+
+    -- Logica Volo Vettoriale
+    if voloAttivo and forzaVolo and char:FindFirstChild("HumanoidRootPart") then
+        local cam, dir = Camera.CFrame, Vector3.new(0,0,0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.RightVector end
+        forzaVolo.Velocity = dir * Config.ValoreVolo
+    end
+
+    -- Logica NoClip Selettiva
+    if noclipAttivo then
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Torso" and part.Name ~= "LowerTorso" then 
+                part.CanCollide = false 
+            end
+        end
+    end
+end)
