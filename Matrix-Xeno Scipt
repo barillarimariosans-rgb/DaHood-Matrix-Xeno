@@ -1,231 +1,428 @@
--- ==========================================================
--- CATEGORIZED DA HOOD UNIVERSE HUB (BYPASS XENO & MATRIX)
--- Codice tuo v6 - Ottimizzato, corretto e inserito in PlayerGui
--- ==========================================================
-
+-- Matrix Hub - Ultimate Edition (Camlock, Prediction, Target, ESP, Infinite Jump, Fullbright)
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-
--- Configurazioni modificabili dal giocatore
-local Config = {
-    Tasti = {
-        Velocita = Enum.KeyCode.Q,
-        Aimlock = Enum.KeyCode.E,
-        Volo = Enum.KeyCode.V,
-        NoClip = Enum.KeyCode.N,
-        Teleport = Enum.KeyCode.X
-    },
-    ValoreVelocita = 70,
-    ValoreVolo = 50,
-    MiraTarget = "Head"
-}
-
-local velocitaAttiva, aimlockAttivo, voloAttivo, noclipAttivo = false, false, false, false
-local targetNemico, forzaVolo = nil, nil
-
--- FIX FONDAMENTALE: Iniezione in PlayerGui anziché CoreGui per evitare i blocchi degli executor
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-if PlayerGui:FindFirstChild("CategorizedPurpleHub") then 
-    PlayerGui.CategorizedPurpleHub:Destroy() 
+local Camera = Workspace.CurrentCamera
+
+-- URL del file JSON su GitHub Raw
+local WHITELIST_URL = "https://raw.githubusercontent.com/barillarimariosans-rgb/DaHood-Matrix-Xeno/main/whitelist.json"
+
+local function CheckWhitelist()
+    local success, response = pcall(function()
+        return game:HttpGet(WHITELIST_URL)
+    end)
+
+    if success then
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(response)
+        end)
+        
+        if ok and type(data) == "table" then
+            for _, id in ipairs(data) do
+                if tonumber(id) == LocalPlayer.UserId then
+                    return true
+                end
+            end
+        end
+    else
+        print("⚠️ Whitelist bypassata per test locale o errore di connessione.")
+        return true
+    end
+    return false
 end
 
--- 1. CREAZIONE FINESTRA PRINCIPALE (VIOLA NEON)
+if not CheckWhitelist() then
+    warn("❌ Accesso negato: ID non in whitelist.")
+    return
+end
+
+print("✅ Whitelist verificata con successo!")
+
+-- Rimuove eventuali istanze precedenti
+if PlayerGui:FindFirstChild("MatrixHubGUI") then
+    PlayerGui.MatrixHubGUI:Destroy()
+end
+
+-- ==========================================
+-- CREAZIONE INTERFACCIA COMPLETA
+-- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local FrameStroke = Instance.new("UIStroke")
-local Title = Instance.new("TextLabel")
-local ScrollingFrame = Instance.new("ScrollingFrame")
-local UIListLayout = Instance.new("UIListLayout")
-
-ScreenGui.Name = "CategorizedPurpleHub"
-ScreenGui.Parent = PlayerGui -- Assegnato alla cartella locale sicura
+ScreenGui.Name = "MatrixHubGUI"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
 
-MainFrame.Size = UDim2.new(0, 250, 0, 430)
-MainFrame.Position = UDim2.new(0.05, 0, 0.15, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 25)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 480, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
-FrameStroke.Color = Color3.fromRGB(160, 32, 240)
-FrameStroke.Thickness = 2
-FrameStroke.Parent = MainFrame
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
 
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-Title.Text = "🔮 Da Hood Categorized Hub v6 🔮"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 13
+-- Titolo
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Text = "Matrix Hub • Ultimate Edition"
+Title.TextColor3 = Color3.fromRGB(150, 0, 255)
+Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
 Title.Parent = MainFrame
 
-ScrollingFrame.Parent = MainFrame
-ScrollingFrame.BackgroundTransparency = 1
-ScrollingFrame.Position = UDim2.new(0, 0, 0, 35)
-ScrollingFrame.Size = UDim2.new(1, 0, 1, -35)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 520)
-ScrollingFrame.ScrollBarThickness = 3
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = Title
 
-UIListLayout.Parent = ScrollingFrame
-UIListLayout.Padding = UDim.new(0, 10)
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+-- Sidebar (Barra laterale a sinistra)
+local Sidebar = Instance.new("ScrollingFrame")
+Sidebar.Size = UDim2.new(0, 130, 1, -50)
+Sidebar.Position = UDim2.new(0, 5, 0, 45)
+Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Sidebar.BorderSizePixel = 0
+Sidebar.ScrollBarThickness = 4
+Sidebar.Parent = MainFrame
 
--- 2. FUNZIONI HELPER PER CATEGORIE E PULSANTI
-local function CreaCategoria(nomeCategoria)
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(0, 230, 0, 20)
-    Label.BackgroundTransparency = 1
-    Label.Text = "─── " .. nomeCategoria:upper() .. " ───"
-    Label.TextColor3 = Color3.fromRGB(180, 120, 255)
-    Label.TextSize = 11
-    Label.Font = Enum.Font.SourceSansBold
-    Label.Parent = ScrollingFrame
-end
+local SidebarLayout = Instance.new("UIListLayout")
+SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarLayout.Padding = UDim.new(0, 5)
+SidebarLayout.Parent = Sidebar
 
-local function CreaPulsante(testo, callback)
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(0, 220, 0, 30)
-    Button.BackgroundColor3 = Color3.fromRGB(45, 20, 70)
-    Button.Text = testo
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.Font = Enum.Font.SourceSansBold
-    Button.TextSize = 12
-    Button.Parent = ScrollingFrame
+-- Area Principale dei Contenuti (A destra)
+local ContentArea = Instance.new("Frame")
+ContentArea.Size = UDim2.new(1, -145, 1, -50)
+ContentArea.Position = UDim2.new(0, 140, 0, 45)
+ContentArea.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ContentArea.BorderSizePixel = 0
+ContentArea.Parent = MainFrame
+
+local ContentCorner = Instance.new("UICorner")
+ContentCorner.CornerRadius = UDim.new(0, 6)
+ContentCorner.Parent = ContentArea
+
+-- Tabella per memorizzare le pagine
+local Pages = {}
+
+local function CreatePage(name)
+    local pageFrame = Instance.new("ScrollingFrame")
+    pageFrame.Size = UDim2.new(1, 0, 1, 0)
+    pageFrame.BackgroundTransparency = 1
+    pageFrame.BorderSizePixel = 0
+    pageFrame.ScrollBarThickness = 4
+    pageFrame.Visible = false
+    pageFrame.Parent = ContentArea
     
-    local UICorner = Instance.new("UICorner", Button)
-    UICorner.CornerRadius = UDim.new(0, 5)
-    local Stroke = Instance.new("UIStroke", Button)
-    Stroke.Color = Color3.fromRGB(140, 35, 210)
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = pageFrame
     
-    Button.MouseButton1Click:Connect(function() callback(Button) end)
-    return Button
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.Parent = pageFrame
+    
+    Pages[name] = pageFrame
+    return pageFrame
 end
 
--- ==========================================================
--- COSTRUZIONE DELLE CATEGORIE VERTICALI
--- ==========================================================
+-- Creazione delle Pagine
+local HomeTab = CreatePage("Home")
+local GameOptionsTab = CreatePage("Opzioni Gioco")
+local TargetTab = CreatePage("Target")
+local VisualsTab = CreatePage("Visuali")
+local MovementTab = CreatePage("Movimento")
+local TeleportTab = CreatePage("Teleport")
+local CreditsTab = CreatePage("Crediti")
 
-CreaCategoria("Combat")
-local regTgt = CreaPulsante("Target Aimlock: " .. Config.MiraTarget:upper(), function(b)
-    Config.MiraTarget = Config.MiraTarget == "Head" and "Torso" or "Head"
-    b.Text = "Target Aimlock: " .. Config.MiraTarget:upper()
-end)
-CreaPulsante("Attiva Aimlock con tasto: [" .. Config.Tasti.Aimlock.Name .. "]", function() end)
+-- Schermata iniziale (Home)
+HomeTab.Visible = true
+local WelcomeText = Instance.new("TextLabel")
+WelcomeText.Size = UDim2.new(1, 0, 0, 60)
+WelcomeText.BackgroundTransparency = 1
+WelcomeText.Text = "Benvenuto nell'Ultimate Edition!\n[RightShift] Nascondi Menu\n[Q] Attiva/Disattiva Camlock"
+WelcomeText.TextColor3 = Color3.fromRGB(200, 200, 200)
+WelcomeText.TextSize = 13
+WelcomeText.Font = Enum.Font.SourceSans
+WelcomeText.TextWrapped = true
+WelcomeText.Parent = HomeTab
 
-CreaCategoria("Movement")
-local regVel = CreaPulsante("Regola Velocità: " .. Config.ValoreVelocita, function(b)
-    Config.ValoreVelocita = Config.ValoreVelocita >= 150 and 40 or Config.ValoreVelocita + 20
-    b.Text = "Regola Velocità: " .. Config.ValoreVelocita
-end)
-local regVol = CreaPulsante("Regola Volo: " .. Config.ValoreVolo, function(b)
-    Config.ValoreVolo = Config.ValoreVolo >= 120 and 30 or Config.ValoreVolo + 20
-    b.Text = "Regola Volo: " .. Config.ValoreVolo
-end)
-CreaPulsante("Tasti: Corsa ["..Config.Tasti.Velocita.Name.."] | Volo ["..Config.Tasti.Volo.Name.."]", function() end)
-CreaPulsante("Tasto NoClip (Muri): [" .. Config.Tasti.NoClip.Name .. "]", function() end)
-
-CreaCategoria("Teleports")
-CreaPulsante("Teletrasporto automatico: [" .. Config.Tasti.Teleport.Name .. "]", function() end)
-CreaPulsante("Cerca Shop nella variante", function()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") and (v.Name:lower():match("ammo") or v.Name:lower():match("gunshop")) then
-                char.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
-                break
-            end
-        end
-    end
-end)
-
-CreaCategoria("Settings")
-CreaPulsante("Nascondi questo Menu: [P]", function() end)
-
--- ==========================================================
--- LOGICA DI FUNZIONAMENTO INTELLIGENTE BYPASS
--- ==========================================================
-
-local function TrovaNemicoVicino()
-    local piuVicino, distanzaMinima = nil, math.huge
-    local localChar = LocalPlayer.Character
-    if not localChar or not localChar:FindFirstChild("HumanoidRootPart") then return nil end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local dist = (localChar.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-            if dist < distanzaMinima then piuVicino, distanzaMinima = p, dist end
-        end
-    end
-    return piuVicino
-end
-
-UserInputService.InputBegan:Connect(function(input, inChat)
-    if inChat then return end
-    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-
-    if input.KeyCode == Enum.KeyCode.P then MainFrame.Visible = not MainFrame.Visible return end
-
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    if input.KeyCode == Config.Tasti.Velocita then
-        velocitaAttiva = not velocitaAttiva
-    end
-    if input.KeyCode == Config.Tasti.Aimlock then
-        aimlockAttivo = not aimlockAttivo; targetNemico = aimlockAttivo and TrovaNemicoVicino() or nil
-    end
-    if input.KeyCode == Config.Tasti.Volo then
-        voloAttivo = not voloAttivo
-        if voloAttivo then
-            forzaVolo = Instance.new("BodyVelocity", char.HumanoidRootPart); forzaVolo.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+-- Funzioni di supporto
+local function CreateToggle(tab, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = "  " .. text .. ": [ OFF ]"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.SourceSans
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = tab
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local toggled = false
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        if toggled then
+            btn.Text = "  " .. text .. ": [ ON ]"
+            btn.BackgroundColor3 = Color3.fromRGB(90, 20, 150)
         else
-            if forzaVolo then forzaVolo:Destroy() end
+            btn.Text = "  " .. text .. ": [ OFF ]"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end
+        pcall(function() callback(toggled) end)
+    end)
+end
+
+local function CreateButton(tab, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = "  " .. text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.SourceSans
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = tab
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        pcall(callback)
+    end)
+end
+
+-- ==========================================
+-- LOGICA DELLE FUNZIONI (CAMLOCK, ESP, ECC.)
+-- ==========================================
+
+local camlockMenuEnabled = false
+local camlockActive = false
+local selectedTargetPlayer = nil
+local predictionValue = 0.135
+local espEnabled = false
+local infiniteJumpEnabled = false
+
+-- Gestione Target List
+local function RefreshPlayerList()
+    for _, child in ipairs(TargetTab:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
         end
     end
-    if input.KeyCode == Config.Tasti.NoClip then noclipAttivo = not noclipAttivo end
-    if input.KeyCode == Config.Tasti.Teleport then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") and (v.Name:lower():match("ammo") or v.Name:lower():match("gunshop")) then
-                char.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0) break
+    
+    CreateButton(TargetTab, "❌ Nessun Target (Auto-Closest)", function()
+        selectedTargetPlayer = nil
+        print("Target impostato su: Più vicino automatico")
+    end)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            CreateButton(TargetTab, "👤 " .. player.Name, function()
+                selectedTargetPlayer = player
+                print("Target selezionato:", player.Name)
+            end)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(RefreshPlayerList)
+Players.PlayerRemoving:Connect(RefreshPlayerList)
+RefreshPlayerList()
+
+-- Trova il player più vicino se non c'è un target manuale
+local function GetClosestPlayer()
+    local target = nil
+    local shortestDistance = math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local rootPart = player.Character.HumanoidRootPart
+            local screenPoint, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+            local mouse = LocalPlayer:GetMouse()
+            local distance = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                target = player.Character
             end
         end
     end
+    return target
+end
+
+-- Loop Camlock con Prediction
+RunService.RenderStepped:Connect(function()
+    if camlockMenuEnabled and camlockActive then
+        local targetCharacter = nil
+        if selectedTargetPlayer and selectedTargetPlayer.Character then
+            targetCharacter = selectedTargetPlayer.Character
+        else
+            targetCharacter = GetClosestPlayer()
+        end
+
+        if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") and targetCharacter:FindFirstChild("Humanoid") and targetCharacter.Humanoid.Health > 0 then
+            local targetPart = targetCharacter.HumanoidRootPart
+            local predictedPosition = targetPart.Position + (targetPart.AssemblyLinearVelocity * predictionValue)
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
+        end
+    end
 end)
+
+-- Loop ESP Chams
+local highlights = {}
+local function UpdateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if espEnabled and player.Character then
+                if not highlights[player] then
+                    local hl = Instance.new("Highlight")
+                    hl.Adornee = player.Character
+                    hl.FillColor = Color3.fromRGB(150, 0, 255)
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    hl.FillTransparency = 0.5
+                    hl.Parent = player.Character
+                    highlights[player] = hl
+                end
+            else
+                if highlights[player] then
+                    highlights[player]:Destroy()
+                    highlights[player] = nil
+                end
+            end
+        end
+    end
+end
 
 RunService.RenderStepped:Connect(function()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
-
-    -- Bypass Corsa (Spinta vettoriale fluida per non farsi laggare o cacciare dall'anti-cheat)
-    if velocitaAttiva and char.Humanoid.MoveDirection.Magnitude > 0 then
-        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (char.Humanoid.MoveDirection * (Config.ValoreVelocita / 100))
+    if espEnabled then
+        UpdateESP()
     end
+end)
 
-    -- Chiusura della riga troncata e logica Camlock corretta
-    if aimlockAttivo and targetNemico and targetNemico.Character and targetNemico.Character:FindFirstChild(Config.MiraTarget) then
-        Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetNemico.Character[Config.MiraTarget].Position)
+-- Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if infiniteJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end
+end)
 
-    -- Logica Volo Vettoriale
-    if voloAttivo and forzaVolo and char:FindFirstChild("HumanoidRootPart") then
-        local cam, dir = Camera.CFrame, Vector3.new(0,0,0)
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.RightVector end
-        forzaVolo.Velocity = dir * Config.ValoreVolo
+-- Toggle Menu Assignments
+CreateToggle(GameOptionsTab, "Camlock (Master)", function(state)
+    camlockMenuEnabled = state
+    if not state then camlockActive = false end
+end)
+
+CreateToggle(GameOptionsTab, "Auto-Stomp", function(state)
+    print("Auto-Stomp attivato:", state)
+end)
+
+CreateToggle(VisualsTab, "ESP Chams", function(state)
+    espEnabled = state
+    if not state then
+        for _, hl in pairs(highlights) do
+            hl:Destroy()
+        end
+        highlights = {}
     end
+end)
 
-    -- Logica NoClip Selettiva
-    if noclipAttivo then
-        for _, part in ipairs(char:GetChildren()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Torso" and part.Name ~= "LowerTorso" then 
-                part.CanCollide = false 
-            end
+CreateToggle(VisualsTab, "Fullbright", function(state)
+    if state then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+    end
+end)
+
+CreateToggle(MovementTab, "Infinite Jump", function(state)
+    infiniteJumpEnabled = state
+end)
+
+-- Teleport
+local function TeleportTo(cframe)
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.CFrame = cframe
+    end
+end
+
+CreateButton(TeleportTab, "Negozio Armi", function() TeleportTo(CFrame.new(-587, 8, -735)) end)
+CreateButton(TeleportTab, "Banca", function() TeleportTo(CFrame.new(-437, 23, -284)) end)
+CreateButton(TeleportTab, "Safezone", function() TeleportTo(CFrame.new(0, 50, 0)) end)
+
+-- Crediti
+local CreditsText = Instance.new("TextLabel")
+CreditsText.Size = UDim2.new(1, 0, 0, 50)
+CreditsText.BackgroundTransparency = 1
+CreditsText.Text = "Matrix Hub Team\nUltimate Edition 2026"
+CreditsText.TextColor3 = Color3.fromRGB(255, 255, 255)
+CreditsText.TextSize = 14
+CreditsText.Font = Enum.Font.SourceSans
+CreditsText.TextWrapped = true
+CreditsText.Parent = CreditsTab
+
+-- Gestione Pagine e Sidebar
+local function SwitchPage(tabName)
+    for name, page in pairs(Pages) do
+        page.Visible = (name == tabName)
+    end
+    if tabName == "Target" then
+        RefreshPlayerList()
+    end
+end
+
+local function CreateMenuButton(name, targetTab)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.SourceSans
+    btn.Parent = Sidebar
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        SwitchPage(targetTab)
+    end)
+end
+
+CreateMenuButton("Opzioni Gioco", "Opzioni Gioco")
+CreateMenuButton("Target", "Target")
+CreateMenuButton("Visuali", "Visuali")
+CreateMenuButton("Movimento", "Movimento")
+CreateMenuButton("Teleport", "Teleport")
+CreateMenuButton("Crediti", "Crediti")
+
+-- Gestione Tasti Rapidi
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            MainFrame.Visible = not MainFrame.Visible
+        elseif input.KeyCode == Enum.KeyCode.Q and camlockMenuEnabled then
+            camlockActive = not camlockActive
+            print("Camlock attiva:", camlockActive)
         end
     end
 end)
